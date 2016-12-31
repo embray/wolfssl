@@ -92,6 +92,7 @@ ffi.cdef(
     int wc_AesSetKey(Aes*, const byte*, word32, const byte*, int);
     int wc_AesCbcEncrypt(Aes*, byte*, const byte*, word32);
     int wc_AesCbcDecrypt(Aes*, byte*, const byte*, word32);
+    void wc_AesCtrEncrypt(Aes*, byte*, const byte*, word32);
 
 
     typedef struct { ...; } WC_RNG;

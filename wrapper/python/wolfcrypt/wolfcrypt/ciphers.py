@@ -52,7 +52,7 @@ class _Cipher(object):
         if mode == MODE_CBC:
             if IV is None:
                 raise ValueError("this mode requires an 'IV' string")
-        else:
+        elif mode not in self.supported_modes:
             raise ValueError("this mode is not supported by this cipher")
 
         if self.key_size:
@@ -72,6 +72,7 @@ class _Cipher(object):
         self._enc = None
         self._dec = None
         self._key = t2b(key)
+        self._mode = mode
 
         if IV:
             self._IV = t2b(IV)
@@ -104,19 +105,23 @@ class _Cipher(object):
         """
         string = t2b(string)
 
-        if not string or len(string) % self.block_size:
-            raise ValueError(
-                "string must be a multiple of %d in length" % self.block_size)
+        if self._mode == MODE_CBC:
+            # TODO: This applies to other modes as well, but this is the only
+            # one currently implemented here where it applies
+            if not string or len(string) % self.block_size:
+                raise ValueError(
+                    "string must be a multiple of %d in length" %
+                    self.block_size)
 
         if self._enc is None:
             self._enc = _ffi.new(self._native_type)
             ret = self._set_key(_ENCRYPTION)
-            if ret < 0:
+            if ret is not None and ret < 0:
                 raise WolfCryptError("Invalid key error (%d)" % ret)
 
         result = t2b("\0" * len(string))
         ret = self._encrypt(result, string)
-        if ret < 0:
+        if ret is not None and ret < 0:
             raise WolfCryptError("Encryption error (%d)" % ret)
 
         return result
@@ -132,19 +137,23 @@ class _Cipher(object):
         """
         string = t2b(string)
 
-        if not string or len(string) % self.block_size:
-            raise ValueError(
-                "string must be a multiple of %d in length" % self.block_size)
+        if self._mode == MODE_CBC:
+            # TODO: This applies to other modes as well, but this is the only
+            # one currently implemented here where it applies
+            if not string or len(string) % self.block_size:
+                raise ValueError(
+                    "string must be a multiple of %d in length" %
+                    self.block_size)
 
         if self._dec is None:
             self._dec = _ffi.new(self._native_type)
             ret = self._set_key(_DECRYPTION)
-            if ret < 0:
+            if ret is not None and ret < 0:
                 raise WolfCryptError("Invalid key error (%d)" % ret)
 
         result = t2b("\0" * len(string))
         ret = self._decrypt(result, string)
-        if ret < 0:
+        if ret is not None and ret < 0:
             raise WolfCryptError("Decryption error (%d)" % ret)
 
         return result
@@ -159,6 +168,23 @@ class Aes(_Cipher):
     key_size     = None # 16, 24, 32
     _key_sizes   = [16, 24, 32]
     _native_type = "Aes *"
+    supported_modes = [MODE_CBC]
+
+    _funcs = {
+        MODE_CBC: {
+            'encrypt': _lib.wc_AesCbcEncrypt,
+            'decrypt': _lib.wc_AesCbcDecrypt
+        }
+    }
+
+    if hasattr(_lib, 'wc_AesCtrEncrypt'):
+        supported_modes.append(MODE_CTR)
+        _funcs.update({
+            MODE_CTR: {
+                'encrypt': _lib.wc_AesCtrEncrypt,
+                'decrypt': _lib.wc_AesCtrEncrypt
+            }
+        })
 
 
     def _set_key(self, direction):
@@ -171,11 +197,13 @@ class Aes(_Cipher):
 
 
     def _encrypt(self, destination, source):
-        return _lib.wc_AesCbcEncrypt(self._enc, destination, source,len(source))
+        return self._funcs[self._mode]['encrypt'](self._enc, destination,
+                                                  source, len(source))
 
 
     def _decrypt(self, destination, source):
-        return _lib.wc_AesCbcDecrypt(self._dec, destination, source,len(source))
+        return self._funcs[self._mode]['decrypt'](self._dec, destination,
+                                                  source, len(source))
 
 
 class _Rsa(object):
