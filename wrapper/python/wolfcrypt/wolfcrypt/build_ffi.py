@@ -26,6 +26,7 @@ ffi = FFI()
 ffi.set_source("wolfcrypt._ffi",
     """
         #include <wolfssl/options.h>
+        #include <wolfssl/wolfcrypt/error-crypt.h>
 
         #include <wolfssl/wolfcrypt/sha.h>
         #include <wolfssl/wolfcrypt/sha256.h>
@@ -109,6 +110,9 @@ ffi.cdef(
     int wc_RsaSetRNG(RsaKey* key, WC_RNG* rng);
     int wc_FreeRsaKey(RsaKey* key);
 
+    int wc_MakeRsaKey(RsaKey*, int, int, WC_RNG*);
+    int wc_RsaKeyToDer(RsaKey*, byte*, word32);
+
     int wc_RsaPrivateKeyDecode(const byte*, word32*, RsaKey*, word32);
     int wc_RsaPublicKeyDecode(const byte*, word32*, RsaKey*, word32);
     int wc_RsaEncryptSize(RsaKey*);
@@ -121,6 +125,7 @@ ffi.cdef(
     int wc_RsaSSL_Sign(const byte*, word32, byte*, word32, RsaKey*, WC_RNG*);
     int wc_RsaSSL_Verify(const byte*, word32, byte*, word32, RsaKey*);
 
+    const int BAD_FUNC_ARG;
 """
 )
 
