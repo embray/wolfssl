@@ -115,7 +115,7 @@ class _Cipher(object):
 
         if self._enc is None:
             self._enc = _ffi.new(self._native_type)
-            ret = self._set_key(_ENCRYPTION)
+            ret = self._set_key(self._enc, _ENCRYPTION)
             if ret is not None and ret < 0:
                 raise WolfCryptError("Invalid key error (%d)" % ret)
 
@@ -147,7 +147,7 @@ class _Cipher(object):
 
         if self._dec is None:
             self._dec = _ffi.new(self._native_type)
-            ret = self._set_key(_DECRYPTION)
+            ret = self._set_key(self._dec, _DECRYPTION)
             if ret is not None and ret < 0:
                 raise WolfCryptError("Invalid key error (%d)" % ret)
 
@@ -187,13 +187,16 @@ class Aes(_Cipher):
         })
 
 
-    def _set_key(self, direction):
-        if direction == _ENCRYPTION:
-            return _lib.wc_AesSetKey(
-                self._enc, self._key, len(self._key), self._IV, _ENCRYPTION)
+    def _set_key(self, native_obj, direction):
+        if self._mode == MODE_CTR:
+            # MODE_CTR only goes in one direction
+            direction = _ENCRYPTION
+            set_key = _lib.wc_AesSetKeyDirect
         else:
-            return _lib.wc_AesSetKey(
-                self._dec, self._key, len(self._key), self._IV, _DECRYPTION)
+            set_key = _lib.wc_AesSetKey
+
+        return set_key(native_obj, self._key, len(self._key), self._IV,
+                       direction)
 
 
     def _encrypt(self, destination, source):
