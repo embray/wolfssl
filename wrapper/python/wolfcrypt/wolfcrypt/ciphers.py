@@ -227,7 +227,7 @@ class _Rsa(object):
 
 
 class RsaPublic(_Rsa):
-    def __init__(self, key):
+    def __init__(self, key, private_key=False):
         key = t2b(key)
 
         _Rsa.__init__(self)
@@ -235,7 +235,12 @@ class RsaPublic(_Rsa):
         idx = _ffi.new("word32*")
         idx[0] = 0
 
-        ret = _lib.wc_RsaPublicKeyDecode(key, idx, self.native_object, len(key))
+        if private_key:
+            decode = _lib.wc_RsaPrivateKeyDecode
+        else:
+            decode = _lib.wc_RsaPublicKeyDecode
+
+        ret = decode(key, idx, self.native_object, len(key))
         if ret < 0:
             raise WolfCryptError("Invalid key error (%d)" % ret)
 
